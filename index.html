@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Maze Pathfinder — Visual Search Algorithms</title>
+  <style>
+    :root {
+      --bg: #0d0d1a;
+      --surface: #13132a;
+      --surface2: #1a1a35;
+      --border: #2a2a55;
+      --accent: #6c63ff;
+      --accent2: #ff6584;
+      --text: #e0e0ff;
+      --text-dim: #7070aa;
+      --open: #1a1a35;
+      --wall: #0a0a15;
+      --visited: #1e3a5f;
+      --frontier: #1a4a7a;
+      --path: #6c63ff;
+      --start: #00e676;
+      --end: #ff4081;
+      --wall-draw: #2a2a55;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+      gap: 20px;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+    }
+    header h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #6c63ff 0%, #ff6584 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    header p {
+      color: var(--text-dim);
+      font-size: 0.88rem;
+      margin-top: 4px;
+    }
+
+    /* ── Main layout ── */
+    .layout {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 100%;
+      max-width: 1300px;
+    }
+
+    /* ── Side panel ── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      min-width: 260px;
+      max-width: 280px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .section-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+
+    /* Algorithm buttons */
+    .algo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .algo-btn {
+      background: var(--surface2);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-dim);
+      padding: 10px 8px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-align: center;
+      transition: all 0.2s;
+      line-height: 1.3;
+    }
+    .algo-btn:hover { border-color: var(--accent); color: var(--text); }
+    .algo-btn.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(108,99,255,0.12);
+    }
+    .algo-badge {
+      font-size: 0.65rem;
+      opacity: 0.7;
+      display: block;
+      font-weight: 400;
+    }
+
+    /* Speed slider */
+    .speed-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .speed-row label { font-size: 0.82rem; color: var(--text-dim); flex: 1; }
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    /* Grid size */
+    .size-row {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .size-row label { font-size: 0.82rem; color: var(--text-dim); white-space: nowrap; }
+    select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 6px 10px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      outline: none;
+      flex: 1;
+    }
+
+    /* Mode buttons */
+    .mode-row { display: flex; gap: 8px; }
+    .mode-btn {
+      flex: 1;
+      padding: 8px 6px;
+      border-radius: 6px;
+      border: 2px solid var(--border);
+      background: var(--surface2);
+      color: var(--text-dim);
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .mode-btn:hover { border-color: var(--accent); color: var(--text); }
+    .mode-btn.active {
+      background: rgba(108,99,255,0.15);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .mode-btn.start-mode.active { border-color: var(--start); color: var(--start); background: rgba(0,230,118,0.1); }
+    .mode-btn.end-mode.active   { border-color: var(--end);   color: var(--end);   background: rgba(255,64,129,0.1); }
+
+    /* Action buttons */
+    .action-btn {
+      width: 100%;
+      padding: 11px;
+      border-radius: var(--radius);
+      border: none;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.3px;
+    }
+    .btn-run {
+      background: linear-gradient(135deg, #6c63ff, #8b80ff);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(108,99,255,0.3);
+    }
+    .btn-run:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(108,99,255,0.4); }
+    .btn-run:active { transform: translateY(0); }
+    .btn-clear {
+      background: var(--surface2);
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+    }
+    .btn-clear:hover { color: var(--text); border-color: var(--accent); }
+    .btn-maze {
+      background: linear-gradient(135deg, #ff6584, #ff8c69);
+      color: #fff;
+    }
+    .btn-maze:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,101,132,0.35); }
+
+    /* Stats */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .stat-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      text-align: center;
+    }
+    .stat-val {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--accent);
+      line-height: 1;
+    }
+    .stat-lbl {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      margin-top: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    /* Legend */
+    .legend { display: flex; flex-direction: column; gap: 6px; }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: var(--text-dim); }
+    .legend-dot {
+      width: 14px; height: 14px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    /* Status bar */
+    .status-bar {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      flex-shrink: 0;
+    }
+    .status-dot.running { background: var(--accent); animation: pulse 1s infinite; }
+    .status-dot.done    { background: var(--start); }
+    .status-dot.fail    { background: var(--end); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* ── Canvas area ── */
+    .canvas-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    #mazeCanvas {
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      cursor: crosshair;
+      display: block;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+      touch-action: none;
+    }
+    .canvas-hint {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Maze Pathfinder</h1>
+  <p>Visualize BFS · DFS · A* · Dijkstra searching through a maze in real time</p>
+</header>
+
+<div class="layout">
+  <!-- Left panel -->
+  <div class="panel">
+
+    <!-- Algorithm -->
+    <div>
+      <div class="section-label">Algorithm</div>
+      <div class="algo-grid">
+        <button class="algo-btn active" data-algo="bfs">
+          BFS
+          <span class="algo-badge">Shortest path</span>
+        </button>
+        <button class="algo-btn" data-algo="dfs">
+          DFS
+          <span class="algo-badge">Not optimal</span>
+        </button>
+        <button class="algo-btn" data-algo="astar">
+          A*
+          <span class="algo-badge">Heuristic optimal</span>
+        </button>
+        <button class="algo-btn" data-algo="dijkstra">
+          Dijkstra
+          <span class="algo-badge">Weighted optimal</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Speed -->
+    <div>
+      <div class="section-label">Animation Speed</div>
+      <div class="speed-row">
+        <label id="speedLabel">Medium</label>
+      </div>
+      <input type="range" id="speedSlider" min="1" max="5" value="3" />
+    </div>
+
+    <!-- Grid size -->
+    <div>
+      <div class="section-label">Grid Size</div>
+      <div class="size-row">
+        <label>Size</label>
+        <select id="gridSize">
+          <option value="15">15 × 15</option>
+          <option value="20" selected>20 × 20</option>
+          <option value="25">25 × 25</option>
+          <option value="30">30 × 30</option>
+          <option value="40">40 × 40</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Draw mode -->
+    <div>
+      <div class="section-label">Draw Mode</div>
+      <div class="mode-row">
+        <button class="mode-btn active" data-mode="wall">Wall</button>
+        <button class="mode-btn start-mode" data-mode="start">Start</button>
+        <button class="mode-btn end-mode" data-mode="end">End</button>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button class="action-btn btn-run" id="runBtn">▶ Run Algorithm</button>
+      <button class="action-btn btn-maze" id="mazeBtn">⚡ Generate Maze</button>
+      <button class="action-btn btn-clear" id="clearBtn">✕ Clear Grid</button>
+    </div>
+
+    <!-- Stats -->
+    <div>
+      <div class="section-label">Statistics</div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-val" id="statVisited">—</div>
+          <div class="stat-lbl">Visited</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="statPath">—</div>
+          <div class="stat-lbl">Path Len</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="statTime">—</div>
+          <div class="stat-lbl">Time (ms)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="statQueue">—</div>
+          <div class="stat-lbl">Max Queue</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status -->
+    <div>
+      <div class="status-bar">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">Click cells to draw walls · Press Run to start</span>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div>
+      <div class="section-label">Legend</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#00e676"></div>Start node</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ff4081"></div>End node</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#1a1a35;border:1px solid #2a2a55"></div>Open cell</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#0a0a15"></div>Wall</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#1e3a5f"></div>Explored</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#2a5080"></div>In frontier</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#6c63ff"></div>Shortest path</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Canvas -->
+  <div class="canvas-wrap">
+    <canvas id="mazeCanvas"></canvas>
+    <div class="canvas-hint">Click or drag to draw/erase walls · Use Draw Mode to place start/end</div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('mazeCanvas');
+const ctx    = canvas.getContext('2d');
+
+// ── Constants ─────────────────────────────────────────────────────────
+const EMPTY = 0, WALL = 1;
+const DIRS4 = [[-1,0],[1,0],[0,-1],[0,1]];
+const CLR = {
+  bg:      '#0d0d1a',
+  empty:   '#1a1a35',
+  wall:    '#0a0a15',
+  start:   '#00e676',
+  end:     '#ff4081',
+  visited: '#1e3a5f',
+  path:    '#6c63ff',
+  gridln:  '#232344',
+};
+const DELAY_MS = {1:80, 2:40, 3:15, 4:5, 5:0};
+const SLBL     = {1:'Slowest', 2:'Slow', 3:'Medium', 4:'Fast', 5:'Instant'};
+
+// ── State ─────────────────────────────────────────────────────────────
+let ROWS = 20, COLS = 20, CELL = 28;
+let grid = [], startPos = {r:1,c:1}, endPos = {r:17,c:17};
+
+let drawMode = 'wall', isDrawing = false, erasing = false;
+let algorithm = 'bfs', speed = 3;
+let animId = null, running = false;
+let stats = {visited:0, pathLen:0, timeMs:0, maxQueue:0};
+
+// ── Grid ─────────────────────────────────────────────────────────────
+// Returns the largest odd number <= n-2 (last safe interior odd index for maze rooms)
+function lastOdd(n) {
+  const v = n - 2;
+  return (v % 2 !== 0) ? v : v - 1;
+}
+
+function initGrid() {
+  grid = Array.from({length:ROWS}, () => Array(COLS).fill(EMPTY));
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      if (r===0 || r===ROWS-1 || c===0 || c===COLS-1) grid[r][c] = WALL;
+  startPos = {r:1, c:1};
+  endPos   = {r:lastOdd(ROWS), c:lastOdd(COLS)};
+}
+
+function resizeCanvas() {
+  const mw = Math.min(window.innerWidth - 310, 720);
+  const mh = window.innerHeight - 200;
+  CELL = Math.max(10, Math.floor(Math.min(mw/COLS, mh/ROWS)));
+  canvas.width  = COLS * CELL;
+  canvas.height = ROWS * CELL;
+}
+
+// ── Drawing ───────────────────────────────────────────────────────────
+function fillCell(r, c, color) {
+  const x = c*CELL, y = r*CELL;
+  const p = CELL > 12 ? 1 : 0, rd = CELL > 16 ? 3 : 1;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  const X=x+p, Y=y+p, W=CELL-2*p, H=CELL-2*p;
+  ctx.moveTo(X+rd,Y); ctx.lineTo(X+W-rd,Y); ctx.quadraticCurveTo(X+W,Y,X+W,Y+rd);
+  ctx.lineTo(X+W,Y+H-rd); ctx.quadraticCurveTo(X+W,Y+H,X+W-rd,Y+H);
+  ctx.lineTo(X+rd,Y+H); ctx.quadraticCurveTo(X,Y+H,X,Y+H-rd);
+  ctx.lineTo(X,Y+rd); ctx.quadraticCurveTo(X,Y,X+rd,Y);
+  ctx.closePath(); ctx.fill();
+}
+
+function redraw() {
+  ctx.fillStyle = CLR.bg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      fillCell(r, c, grid[r][c]===WALL ? CLR.wall : CLR.empty);
+  fillCell(startPos.r, startPos.c, CLR.start);
+  fillCell(endPos.r,   endPos.c,   CLR.end);
+  if (CELL >= 14) {
+    ctx.strokeStyle = CLR.gridln; ctx.lineWidth = 0.4; ctx.globalAlpha = 0.25;
+    for (let r=0;r<=ROWS;r++){ctx.beginPath();ctx.moveTo(0,r*CELL);ctx.lineTo(COLS*CELL,r*CELL);ctx.stroke();}
+    for (let c=0;c<=COLS;c++){ctx.beginPath();ctx.moveTo(c*CELL,0);ctx.lineTo(c*CELL,ROWS*CELL);ctx.stroke();}
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ── Input ─────────────────────────────────────────────────────────────
+function cellAt(e) {
+  const rect = canvas.getBoundingClientRect();
+  const sx = canvas.width/rect.width, sy = canvas.height/rect.height;
+  const cx = (e.clientX ?? e.touches[0].clientX) - rect.left;
+  const cy = (e.clientY ?? e.touches[0].clientY) - rect.top;
+  return {r: Math.floor(cy*sy/CELL), c: Math.floor(cx*sx/CELL)};
+}
+
+function interact(r, c, first) {
+  if (r<0||r>=ROWS||c<0||c>=COLS||running) return;
+  if (drawMode==='start') { grid[r][c]=EMPTY; startPos={r,c}; redraw(); return; }
+  if (drawMode==='end')   { grid[r][c]=EMPTY; endPos  ={r,c}; redraw(); return; }
+  if (r===startPos.r&&c===startPos.c) return;
+  if (r===endPos.r  &&c===endPos.c)   return;
+  if (first) erasing = grid[r][c]===WALL;
+  grid[r][c] = erasing ? EMPTY : WALL;
+  redraw();
+}
+
+canvas.addEventListener('mousedown', e=>{if(running)return;isDrawing=true;const p=cellAt(e);interact(p.r,p.c,true);});
+canvas.addEventListener('mousemove', e=>{if(!isDrawing||running)return;const p=cellAt(e);interact(p.r,p.c,false);});
+document.addEventListener('mouseup', ()=>isDrawing=false);
+canvas.addEventListener('touchstart', e=>{e.preventDefault();if(running)return;isDrawing=true;const p=cellAt(e);interact(p.r,p.c,true);},{passive:false});
+canvas.addEventListener('touchmove',  e=>{e.preventDefault();if(!isDrawing||running)return;const p=cellAt(e);interact(p.r,p.c,false);},{passive:false});
+document.addEventListener('touchend', ()=>isDrawing=false);
+
+// ── UI Controls ───────────────────────────────────────────────────────
+document.querySelectorAll('.algo-btn').forEach(btn=>btn.addEventListener('click',()=>{
+  if(running)return;
+  document.querySelectorAll('.algo-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); algorithm=btn.dataset.algo;
+}));
+document.querySelectorAll('.mode-btn').forEach(btn=>btn.addEventListener('click',()=>{
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); drawMode=btn.dataset.mode;
+}));
+document.getElementById('speedSlider').addEventListener('input',e=>{
+  speed=+e.target.value;
+  document.getElementById('speedLabel').textContent=SLBL[speed];
+});
+document.getElementById('gridSize').addEventListener('change',e=>{
+  if(running)return;
+  ROWS=COLS=+e.target.value;
+  resizeCanvas(); initGrid(); redraw(); clearStats();
+});
+document.getElementById('runBtn').addEventListener('click',()=>{if(!running){clearStats();runAlgo();}});
+document.getElementById('clearBtn').addEventListener('click',()=>{
+  if(running)stopAnim();
+  initGrid(); redraw(); clearStats();
+  setStatus('','Grid cleared · Ready');
+});
+document.getElementById('mazeBtn').addEventListener('click',()=>{
+  if(running)return;
+  genMaze(); setStatus('','Maze generated · Press Run to solve');
+});
+window.addEventListener('resize',()=>{if(!running){resizeCanvas();redraw();}});
+
+// ── Status & Stats ────────────────────────────────────────────────────
+function setStatus(cls,txt){
+  document.getElementById('statusDot').className='status-dot'+(cls?' '+cls:'');
+  document.getElementById('statusText').textContent=txt;
+}
+function clearStats(){
+  stats={visited:0,pathLen:0,timeMs:0,maxQueue:0};
+  ['statVisited','statPath','statTime','statQueue'].forEach(id=>document.getElementById(id).textContent='—');
+}
+function showStats(){
+  document.getElementById('statVisited').textContent=stats.visited;
+  document.getElementById('statPath').textContent   =stats.pathLen||'✗';
+  document.getElementById('statTime').textContent   =stats.timeMs;
+  document.getElementById('statQueue').textContent  =stats.maxQueue;
+}
+function stopAnim(){running=false;if(animId)cancelAnimationFrame(animId);}
+
+// ── Maze Generation (iterative DFS / recursive backtracker) ──────────
+function genMaze() {
+  for (let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) grid[r][c]=WALL;
+  const vis = Array.from({length:ROWS},()=>Array(COLS).fill(false));
+  const stack = [{r:1,c:1}];
+  vis[1][1]=true; grid[1][1]=EMPTY;
+  const D2 = [[-2,0],[2,0],[0,-2],[0,2]];
+  while (stack.length) {
+    const top = stack[stack.length-1];
+    const nbrs = [];
+    for (const [dr,dc] of D2) {
+      const nr=top.r+dr, nc=top.c+dc;
+      if (nr>0&&nr<ROWS-1&&nc>0&&nc<COLS-1&&!vis[nr][nc])
+        nbrs.push({nr,nc,mr:top.r+dr/2,mc:top.c+dc/2});
+    }
+    if (!nbrs.length) { stack.pop(); continue; }
+    const {nr,nc,mr,mc} = nbrs[Math.floor(Math.random()*nbrs.length)];
+    vis[nr][nc]=true; grid[mr][mc]=EMPTY; grid[nr][nc]=EMPTY;
+    stack.push({r:nr,c:nc});
+  }
+  startPos={r:1,c:1};
+  endPos  ={r:lastOdd(ROWS),c:lastOdd(COLS)};
+  grid[startPos.r][startPos.c]=EMPTY;
+  grid[endPos.r]  [endPos.c]  =EMPTY;
+  redraw();
+}
+
+// ── Pathfinding ───────────────────────────────────────────────────────
+const K = (r,c) => `${r},${c}`;
+
+function adj(r, c) {
+  const out = [];
+  for (const [dr,dc] of DIRS4) {
+    const nr=r+dr, nc=c+dc;
+    if (nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&grid[nr][nc]!==WALL) out.push({r:nr,c:nc});
+  }
+  return out;
+}
+
+// ── BFS: Breadth First Search ─────────────────────────────────────────
+// Uses a QUEUE (First In First Out). Explores all cells at distance 1,
+// then distance 2, then 3 — like ripples on water spreading outward.
+// Guarantees the SHORTEST path on an unweighted grid.
+function runBFS() {
+  const queue  = [{r:startPos.r,c:startPos.c}]; // FIFO queue — process oldest first
+  const parent = new Map();                       // tracks who discovered each cell
+  const vis    = new Set([K(startPos.r,startPos.c)]); // visited — marked on push to avoid duplicates
+  const order  = [];                              // animation order (cells visited in sequence)
+  let maxQ = 1;
+  while (queue.length) {
+    maxQ = Math.max(maxQ, queue.length);
+    const {r,c} = queue.shift(); // shift = take from FRONT → oldest cell first (FIFO)
+    order.push({r,c});
+    if (r===endPos.r&&c===endPos.c) return {order,parent,found:true,maxQ};
+    for (const nb of adj(r,c)) {
+      const k=K(nb.r,nb.c);
+      if (!vis.has(k)) { vis.add(k); parent.set(k,{r,c}); queue.push(nb); } // add to BACK of queue
+    }
+  }
+  return {order,parent,found:false,maxQ};
+}
+
+// ── DFS: Depth First Search ───────────────────────────────────────────
+// Uses a STACK (Last In First Out). Picks one direction and goes as deep
+// as possible before backtracking. Fast but does NOT guarantee shortest path.
+// DIRS4 = [up, down, left, right] → with LIFO, "right" is explored first,
+// so DFS always tries to go right → can go far in the wrong direction.
+function runDFS() {
+  const stack  = [{r:startPos.r,c:startPos.c}]; // LIFO stack — process newest first
+  const parent = new Map();                       // tracks who discovered each cell
+  const vis    = new Set([K(startPos.r,startPos.c)]); // visited — marked on push
+  const order  = [];                              // animation order
+  let maxQ = 1;
+  while (stack.length) {
+    maxQ = Math.max(maxQ, stack.length);
+    const {r,c} = stack.pop(); // pop = take from TOP → most recently added (LIFO = goes deep)
+    order.push({r,c});
+    if (r===endPos.r&&c===endPos.c) return {order,parent,found:true,maxQ};
+    for (const nb of adj(r,c)) {
+      const k=K(nb.r,nb.c);
+      // mark visited when PUSHING so the same cell isn't added to the stack twice
+      if (!vis.has(k)) { vis.add(k); parent.set(k,{r,c}); stack.push(nb); }
+    }
+  }
+  return {order,parent,found:false,maxQ};
+}
+
+// ── A*: A-Star Search ─────────────────────────────────────────────────
+// Uses a PRIORITY QUEUE sorted by f = g + h.
+//   g = exact cost from start to this cell (steps taken so far)
+//   h = heuristic: Manhattan distance to goal (straight-line guess, ignores walls)
+//   f = g + h = estimated total cost through this cell
+// Always processes the cell with the LOWEST f first → biased toward the goal.
+// Guarantees shortest path. Faster than BFS/Dijkstra when heuristic is good.
+// On winding mazes the heuristic is less useful (walls block the straight line).
+function runAstar() {
+  const H = (r,c) => Math.abs(r-endPos.r)+Math.abs(c-endPos.c); // heuristic: Manhattan distance to end
+  const open   = [{r:startPos.r,c:startPos.c,g:0,f:H(startPos.r,startPos.c)}]; // priority queue
+  const parent = new Map();                        // tracks best parent for each cell
+  const gMap   = new Map([[K(startPos.r,startPos.c),0]]); // best known g-cost to each cell
+  const vis    = new Set();                        // fully processed cells (marked on POP)
+  const order  = [];                               // animation order
+  let maxQ = 1;
+  while (open.length) {
+    maxQ = Math.max(maxQ, open.length);
+    open.sort((a,b)=>a.f-b.f);  // sort by f → lowest f (most promising) goes first
+    const {r,c,g} = open.shift(); // take the most promising cell
+    const k = K(r,c);
+    if (vis.has(k)) continue; // skip if already finalized (can be added multiple times via better paths)
+    vis.add(k); order.push({r,c}); // finalize this cell
+    if (r===endPos.r&&c===endPos.c) return {order,parent,found:true,maxQ};
+    for (const nb of adj(r,c)) {
+      const nk=K(nb.r,nb.c), ng=g+1; // g cost to neighbor = current g + 1 step
+      if (!gMap.has(nk)||ng<gMap.get(nk)) { // only update if this is a better path to neighbor
+        gMap.set(nk,ng); parent.set(nk,{r,c});
+        open.push({r:nb.r,c:nb.c,g:ng,f:ng+H(nb.r,nb.c)}); // f = g + h
+      }
+    }
+  }
+  return {order,parent,found:false,maxQ};
+}
+
+// ── Dijkstra ──────────────────────────────────────────────────────────
+// Same as A* but with NO heuristic (h = 0, only uses g = actual distance).
+// Expands outward in order of distance from start — like BFS but works on
+// weighted graphs. On this uniform grid (all steps cost 1) it behaves
+// identically to BFS but is slightly slower due to sorting.
+function runDijkstra() {
+  const open   = [{r:startPos.r,c:startPos.c,d:0}]; // priority queue sorted by distance d
+  const parent = new Map();                           // tracks best parent for each cell
+  const dMap   = new Map([[K(startPos.r,startPos.c),0]]); // best known distance to each cell
+  const vis    = new Set();                           // finalized cells (marked on POP)
+  const order  = [];                                  // animation order
+  let maxQ = 1;
+  while (open.length) {
+    maxQ = Math.max(maxQ, open.length);
+    open.sort((a,b)=>a.d-b.d); // sort by distance → closest to start goes first
+    const {r,c,d} = open.shift(); // take the nearest unfinalized cell
+    const k = K(r,c);
+    if (vis.has(k)) continue; // skip if already finalized
+    vis.add(k); order.push({r,c});
+    if (r===endPos.r&&c===endPos.c) return {order,parent,found:true,maxQ};
+    for (const nb of adj(r,c)) {
+      const nk=K(nb.r,nb.c), nd=d+1; // distance to neighbor = current distance + 1
+      if (!dMap.has(nk)||nd<dMap.get(nk)) { // only update if shorter path found
+        dMap.set(nk,nd); parent.set(nk,{r,c});
+        open.push({r:nb.r,c:nb.c,d:nd});
+      }
+    }
+  }
+  return {order,parent,found:false,maxQ};
+}
+
+// Trace parent chain from end back to start
+function buildPath(parent) {
+  const path = [];
+  let r = endPos.r, c = endPos.c;
+  for (let guard = 0; guard < ROWS*COLS+2; guard++) {
+    path.unshift({r,c});
+    if (r===startPos.r && c===startPos.c) break;
+    const p = parent.get(K(r,c));
+    if (!p) break;
+    r=p.r; c=p.c;
+  }
+  return path;
+}
+
+// ── Animation ─────────────────────────────────────────────────────────
+function lerpColor(a, b, t) {
+  const px = h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
+  const [ar,ag,ab]=px(a),[br,bg,bb]=px(b);
+  const hex=v=>Math.round(v).toString(16).padStart(2,'0');
+  return `#${hex(ar+(br-ar)*t)}${hex(ag+(bg-ag)*t)}${hex(ab+(bb-ab)*t)}`;
+}
+function isSpecial(r,c){return(r===startPos.r&&c===startPos.c)||(r===endPos.r&&c===endPos.c);}
+
+function runAlgo() {
+  running = true;
+  setStatus('running',`Running ${algorithm.toUpperCase()}…`);
+  document.getElementById('runBtn').textContent='⏳ Running…';
+
+  const t0 = performance.now();
+  const algos = {bfs:runBFS, dfs:runDFS, astar:runAstar, dijkstra:runDijkstra};
+  const result = algos[algorithm]();
+  stats.timeMs   = Math.round(performance.now()-t0);
+  stats.maxQueue = result.maxQ;
+  stats.visited  = result.order.length;
+
+  const path = result.found ? buildPath(result.parent) : [];
+  stats.pathLen  = path.length;
+
+  const delay = DELAY_MS[speed];
+
+  if (delay === 0) {
+    redraw();
+    for (const {r,c} of result.order) if (!isSpecial(r,c)) fillCell(r,c,CLR.visited);
+    if (result.found) for (const {r,c} of path) if (!isSpecial(r,c)) fillCell(r,c,CLR.path);
+    fillCell(startPos.r,startPos.c,CLR.start);
+    fillCell(endPos.r,  endPos.c,  CLR.end);
+    finish(result.found, path);
+    return;
+  }
+
+  let vi=0, pi=0, phase='explore', lastTs=0;
+  const capturedResult = result;
+  const capturedPath   = path;
+
+  function step(ts) {
+    if (!running) return;
+    if (ts - lastTs < delay) { animId=requestAnimationFrame(step); return; }
+    lastTs = ts;
+
+    if (phase === 'explore') {
+      if (vi < capturedResult.order.length) {
+        const {r,c} = capturedResult.order[vi++];
+        if (!isSpecial(r,c))
+          fillCell(r,c, lerpColor('#1a2840','#3060a0', vi/capturedResult.order.length));
+        animId = requestAnimationFrame(step);
+      } else if (capturedResult.found) {
+        phase='path'; animId=requestAnimationFrame(step);
+      } else {
+        finish(false,[]);
+      }
+    } else {
+      if (pi < capturedPath.length) {
+        const {r,c} = capturedPath[pi++];
+        if (!isSpecial(r,c)) fillCell(r,c,CLR.path);
+        fillCell(startPos.r,startPos.c,CLR.start);
+        fillCell(endPos.r,  endPos.c,  CLR.end);
+        animId = requestAnimationFrame(step);
+      } else {
+        finish(true, capturedPath);
+      }
+    }
+  }
+  animId = requestAnimationFrame(step);
+}
+
+function finish(found, path) {
+  running=false;
+  document.getElementById('runBtn').textContent='▶ Run Algorithm';
+  showStats();
+  if (found) setStatus('done',`✓ Path found! Length: ${path.length} · Explored: ${stats.visited} cells`);
+  else       setStatus('fail','✗ No path found — goal is unreachable');
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────
+resizeCanvas(); initGrid(); redraw();
+setStatus('','Click cells to draw walls · Generate Maze · Press Run to start');
+</script>
+</body>
+</html>
