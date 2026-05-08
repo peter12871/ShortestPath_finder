@@ -631,19 +631,19 @@ function adj(r, c) {
 // then distance 2, then 3 — like ripples on water spreading outward.
 // Guarantees the SHORTEST path on an unweighted grid.
 function runBFS() {
-  const queue  = [{r:startPos.r,c:startPos.c}]; // FIFO queue — process oldest first
-  const parent = new Map();                       // tracks who discovered each cell
-  const vis    = new Set([K(startPos.r,startPos.c)]); // visited — marked on push to avoid duplicates
-  const order  = [];                              // animation order (cells visited in sequence)
-  let maxQ = 1;
-  while (queue.length) {
-    maxQ = Math.max(maxQ, queue.length);
-    const {r,c} = queue.shift(); // shift = take from FRONT → oldest cell first (FIFO)
+  const queue  = [{r:startPos.r,c:startPos.c}]; // FIFO queue process oldest first first cell in row colum
+  const parent = new Map();                       // tracks who discovered each cell backwards from end to start
+  const vis    = new Set([K(startPos.r,startPos.c)]); // visited marked on push to avoid duplicates start with the first one 
+  const order  = [];                              // animation order visited cell in here for order to reshowit 
+  let maxQ = 1; // track the max ever start 1 
+  while (queue.length) { // kel ma fi cells keep looping 
+    maxQ = Math.max(maxQ, queue.length); // update size 
+    const {r,c} = queue.shift(); // shift = take from FRONT  oldest cell first (FIFO)
     order.push({r,c});
-    if (r===endPos.r&&c===endPos.c) return {order,parent,found:true,maxQ};
-    for (const nb of adj(r,c)) {
-      const k=K(nb.r,nb.c);
-      if (!vis.has(k)) { vis.add(k); parent.set(k,{r,c}); queue.push(nb); } // add to BACK of queue
+    if (r===endPos.r&&c===endPos.c) return {order,parent,found:true,maxQ}; // the end return the foundings 
+    for (const nb of adj(r,c)) { // loop on the 4 neogboors up down left right 
+      const k=K(nb.r,nb.c);// convert to a string key like "3,5"
+      if (!vis.has(k)) { vis.add(k); parent.set(k,{r,c}); queue.push(nb); } // if not visited visit add parent  add to BACK of queue  to be proccessed level by level 
     }
   }
   return {order,parent,found:false,maxQ};
@@ -655,20 +655,20 @@ function runBFS() {
 // DIRS4 = [up, down, left, right] → with LIFO, "right" is explored first,
 // so DFS always tries to go right → can go far in the wrong direction.
 function runDFS() {
-  const stack  = [{r:startPos.r,c:startPos.c}]; // LIFO stack — process newest first
+  const stack  = [{r:startPos.r,c:startPos.c}]; // LIFO stack  process newest first
   const parent = new Map();                       // tracks who discovered each cell
-  const vis    = new Set([K(startPos.r,startPos.c)]); // visited — marked on push
+  const vis    = new Set([K(startPos.r,startPos.c)]); // visited  marked on push
   const order  = [];                              // animation order
   let maxQ = 1;
-  while (stack.length) {
+  while (stack.length) { 
     maxQ = Math.max(maxQ, stack.length);
-    const {r,c} = stack.pop(); // pop = take from TOP → most recently added (LIFO = goes deep)
-    order.push({r,c});
-    if (r===endPos.r&&c===endPos.c) return {order,parent,found:true,maxQ};
+    const {r,c} = stack.pop(); // pop = take from TOP most recently added (LIFO = goes deep)
+    order.push({r,c}); // push in order to show the visiting order in the animation
+    if (r===endPos.r&&c===endPos.c) return {order,parent,found:true,maxQ}; // end 
     for (const nb of adj(r,c)) {
-      const k=K(nb.r,nb.c);
+      const k=K(nb.r,nb.c); // string 
       // mark visited when PUSHING so the same cell isn't added to the stack twice
-      if (!vis.has(k)) { vis.add(k); parent.set(k,{r,c}); stack.push(nb); }
+      if (!vis.has(k)) { vis.add(k); parent.set(k,{r,c}); stack.push(nb); } // if not visited mark visited add parent and push to the TOP of the stack to be processed next
     }
   }
   return {order,parent,found:false,maxQ};
