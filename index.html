@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Maze Pathfinder — Visual Search Algorithms</title>
+  <title>Maze Pathfinder Visual Search Algorithms</title>
   <style>
     :root {
       --bg: #0d0d1a;
@@ -278,7 +278,7 @@
     .status-dot.fail    { background: var(--end); }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-    /* ── Canvas area ── */
+    /* ─Canvas area */
     .canvas-wrap {
       display: flex;
       flex-direction: column;
@@ -433,7 +433,7 @@
 const canvas = document.getElementById('mazeCanvas');
 const ctx    = canvas.getContext('2d');
 
-// ── Constants ─────────────────────────────────────────────────────────
+// ── Constants ─
 const EMPTY = 0, WALL = 1;
 const DIRS4 = [[-1,0],[1,0],[0,-1],[0,1]];
 const CLR = {
@@ -449,7 +449,7 @@ const CLR = {
 const DELAY_MS = {1:80, 2:40, 3:15, 4:5, 5:0};
 const SLBL     = {1:'Slowest', 2:'Slow', 3:'Medium', 4:'Fast', 5:'Instant'};
 
-// ── State ─────────────────────────────────────────────────────────────
+// ── State 
 let ROWS = 20, COLS = 20, CELL = 28;
 let grid = [], startPos = {r:1,c:1}, endPos = {r:17,c:17};
 
@@ -458,7 +458,7 @@ let algorithm = 'bfs', speed = 3;
 let animId = null, running = false;
 let stats = {visited:0, pathLen:0, timeMs:0, maxQueue:0};
 
-// ── Grid ─────────────────────────────────────────────────────────────
+// ── Grid 
 // Returns the largest odd number <= n-2 (last safe interior odd index for maze rooms)
 function lastOdd(n) {
   const v = n - 2;
@@ -466,37 +466,39 @@ function lastOdd(n) {
 }
 
 function initGrid() {
-  grid = Array.from({length:ROWS}, () => Array(COLS).fill(EMPTY));
+  grid = Array.from({length:ROWS}, () => Array(COLS).fill(EMPTY)); // create array 
   for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++)
-      if (r===0 || r===ROWS-1 || c===0 || c===COLS-1) grid[r][c] = WALL;
+      if (r===0 || r===ROWS-1 || c===0 || c===COLS-1) grid[r][c] = WALL; // every cell set to 0 except the borders which are walls = 1
   startPos = {r:1, c:1};
   endPos   = {r:lastOdd(ROWS), c:lastOdd(COLS)};
 }
 
-function resizeCanvas() {
+function resizeCanvas() { // figure out the max available space 
   const mw = Math.min(window.innerWidth - 310, 720);
-  const mh = window.innerHeight - 200;
+  const mh = window.innerHeight - 200; 
   CELL = Math.max(10, Math.floor(Math.min(mw/COLS, mh/ROWS)));
   canvas.width  = COLS * CELL;
   canvas.height = ROWS * CELL;
 }
 
-// ── Drawing ───────────────────────────────────────────────────────────
+// Drawing 
 function fillCell(r, c, color) {
-  const x = c*CELL, y = r*CELL;
-  const p = CELL > 12 ? 1 : 0, rd = CELL > 16 ? 3 : 1;
+  const x = c*CELL, y = r*CELL; // top left corner of the cell in pixels
+  const p = CELL > 12 ? 1 : 0, rd = CELL > 16 ? 3 : 1; // padding and corner radius for aesthetics on larger cells
   ctx.fillStyle = color;
-  ctx.beginPath();
-  const X=x+p, Y=y+p, W=CELL-2*p, H=CELL-2*p;
-  ctx.moveTo(X+rd,Y); ctx.lineTo(X+W-rd,Y); ctx.quadraticCurveTo(X+W,Y,X+W,Y+rd);
-  ctx.lineTo(X+W,Y+H-rd); ctx.quadraticCurveTo(X+W,Y+H,X+W-rd,Y+H);
-  ctx.lineTo(X+rd,Y+H); ctx.quadraticCurveTo(X,Y+H,X,Y+H-rd);
-  ctx.lineTo(X,Y+rd); ctx.quadraticCurveTo(X,Y,X+rd,Y);
-  ctx.closePath(); ctx.fill();
+  ctx.beginPath(); // draw a rounded rectangle for the cell with padding p and corner radius rd to 
+  // make it look nicer on larger cell sizes. The rectangle is drawn inside the cell boundaries (x,y) 
+  // to (x+CELL,y+CELL) with some padding to create a gap between cells when they are large enough.
+  const X=x+p, Y=y+p, W=CELL-2*p, H=CELL-2*p; // adjusted coordinates and size for the inner rectangle with padding
+  ctx.moveTo(X+rd,Y); ctx.lineTo(X+W-rd,Y); ctx.quadraticCurveTo(X+W,Y,X+W,Y+rd); // top edge and top-right corner
+  ctx.lineTo(X+W,Y+H-rd); ctx.quadraticCurveTo(X+W,Y+H,X+W-rd,Y+H);// right edge and bottom-right corner
+  ctx.lineTo(X+rd,Y+H); ctx.quadraticCurveTo(X,Y+H,X,Y+H-rd);// bottom edge and bottom-left corner
+  ctx.lineTo(X,Y+rd); ctx.quadraticCurveTo(X,Y,X+rd,Y);// left edge and top-left corner
+  ctx.closePath(); ctx.fill(); // fill the cell with the specified color
 }
 
-function redraw() {
+function redraw() { // redraw entire grid every time something  changes 
   ctx.fillStyle = CLR.bg;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   for (let r = 0; r < ROWS; r++)
@@ -512,8 +514,10 @@ function redraw() {
   }
 }
 
-// ── Input ─────────────────────────────────────────────────────────────
-function cellAt(e) {
+// ── Input 
+function cellAt(e) { // convert mouse event to cell coordinates by figuring out the size of each cell
+//  and the position of the canvas on the page and then calculating which cell was clicked based on
+//  the mouse position relative to the canvas and the cell size
   const rect = canvas.getBoundingClientRect();
   const sx = canvas.width/rect.width, sy = canvas.height/rect.height;
   const cx = (e.clientX ?? e.touches[0].clientX) - rect.left;
@@ -522,99 +526,141 @@ function cellAt(e) {
 }
 
 function interact(r, c, first) {
-  if (r<0||r>=ROWS||c<0||c>=COLS||running) return;
-  if (drawMode==='start') { grid[r][c]=EMPTY; startPos={r,c}; redraw(); return; }
-  if (drawMode==='end')   { grid[r][c]=EMPTY; endPos  ={r,c}; redraw(); return; }
-  if (r===startPos.r&&c===startPos.c) return;
-  if (r===endPos.r  &&c===endPos.c)   return;
-  if (first) erasing = grid[r][c]===WALL;
-  grid[r][c] = erasing ? EMPTY : WALL;
-  redraw();
+  if (r<0||r>=ROWS||c<0||c>=COLS||running) return; // ignore if out of bounds or algo is running
+  if (drawMode==='start') { grid[r][c]=EMPTY; startPos={r,c}; redraw(); return; } // if in start mode, set the cell to empty, update the start position and redraw
+  if (drawMode==='end')   { grid[r][c]=EMPTY; endPos  ={r,c}; redraw(); return; } // if in end mode, set the cell to empty, update the end position and redraw
+  if (r===startPos.r&&c===startPos.c) return; // if clicking on the start position, do nothing
+  if (r===endPos.r  &&c===endPos.c)   return; // if clicking on the end position, do nothing
+  if (first) erasing = grid[r][c]===WALL;// if this is the first cell in a drag, decide whether we are erasing or drawing based on the current state of the cell
+  grid[r][c] = erasing ? EMPTY : WALL; // set the cell to empty if erasing, or wall if drawing
+  redraw(); // redraw the grid to show the change
 }
 
-canvas.addEventListener('mousedown', e=>{if(running)return;isDrawing=true;const p=cellAt(e);interact(p.r,p.c,true);});
-canvas.addEventListener('mousemove', e=>{if(!isDrawing||running)return;const p=cellAt(e);interact(p.r,p.c,false);});
-document.addEventListener('mouseup', ()=>isDrawing=false);
-canvas.addEventListener('touchstart', e=>{e.preventDefault();if(running)return;isDrawing=true;const p=cellAt(e);interact(p.r,p.c,true);},{passive:false});
-canvas.addEventListener('touchmove',  e=>{e.preventDefault();if(!isDrawing||running)return;const p=cellAt(e);interact(p.r,p.c,false);},{passive:false});
-document.addEventListener('touchend', ()=>isDrawing=false);
+canvas.addEventListener('mousedown', e=>{if(running)return;isDrawing=true;const p=cellAt(e);interact(p.r,p.c,true);}); // when mouse down, start drawing and determine if we are erasing or drawing based on the first cell
+canvas.addEventListener('mousemove', e=>{if(!isDrawing||running)return;const p=cellAt(e);interact(p.r,p.c,false);});// when mouse moves, if we are in drawing mode and algo is not running, continue drawing or erasing based on the initial action determined on mousedown
+document.addEventListener('mouseup', ()=>isDrawing=false); // when mouse up, stop drawing
+canvas.addEventListener('touchstart', e=>{e.preventDefault();if(running)return;isDrawing=true;const p=cellAt(e);interact(p.r,p.c,true);},{passive:false}); // touch start is similar to mouse down but we prevent default to avoid scrolling and set passive to false to allow preventDefault
+canvas.addEventListener('touchmove',  e=>{e.preventDefault();if(!isDrawing||running)return;const p=cellAt(e);interact(p.r,p.c,false);},{passive:false});// touch move is similar to mouse move but we prevent default to avoid scrolling and set passive to false to allow preventDefault
+document.addEventListener('touchend', ()=>isDrawing=false); // when touch ends, stop drawing
 
-// ── UI Controls ───────────────────────────────────────────────────────
+// ── UI Controls ──────────────────────────────────────────────────────
+
+// Algorithm selector buttons (BFS / DFS / A* / Dijkstra)
+// Deselect all buttons, highlight the clicked one, save chosen algo from data-algo attribute
 document.querySelectorAll('.algo-btn').forEach(btn=>btn.addEventListener('click',()=>{
-  if(running)return;
-  document.querySelectorAll('.algo-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active'); algorithm=btn.dataset.algo;
+  if(running)return; // ignore clicks while animation is playing
+  document.querySelectorAll('.algo-btn').forEach(b=>b.classList.remove('active')); // deselect all
+  btn.classList.add('active'); algorithm=btn.dataset.algo; // mark selected, save e.g. "bfs"
 }));
+
+// Draw mode buttons (Wall / Start / End)
+// Same pattern: deselect all, select clicked, save mode name for interact()
 document.querySelectorAll('.mode-btn').forEach(btn=>btn.addEventListener('click',()=>{
-  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active'); drawMode=btn.dataset.mode;
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active')); // deselect all
+  btn.classList.add('active'); drawMode=btn.dataset.mode; // save e.g. "wall", "start", "end"
 }));
+
+// Speed slider (1=Slowest … 5=Instant) — controls animation delay between steps
 document.getElementById('speedSlider').addEventListener('input',e=>{
-  speed=+e.target.value;
-  document.getElementById('speedLabel').textContent=SLBL[speed];
+  speed=+e.target.value;                                       // + converts string to number
+  document.getElementById('speedLabel').textContent=SLBL[speed]; // update label e.g. "Medium"
 });
+
+// Grid size dropdown (15×15 up to 40×40) — rebuilds the grid when changed
 document.getElementById('gridSize').addEventListener('change',e=>{
-  if(running)return;
-  ROWS=COLS=+e.target.value;
-  resizeCanvas(); initGrid(); redraw(); clearStats();
+  if(running)return;         // don't resize while algorithm is running
+  ROWS=COLS=+e.target.value; // square grid so rows = cols
+  resizeCanvas(); initGrid(); redraw(); clearStats(); // rebuild everything from scratch
 });
+
+// Run button — clears old stats and starts the selected algorithm
 document.getElementById('runBtn').addEventListener('click',()=>{if(!running){clearStats();runAlgo();}});
+
+// Clear button — stops any running animation and resets grid to blank
 document.getElementById('clearBtn').addEventListener('click',()=>{
-  if(running)stopAnim();
-  initGrid(); redraw(); clearStats();
+  if(running)stopAnim();          // cancel animation if in progress
+  initGrid(); redraw(); clearStats(); // reset grid, redraw canvas, wipe stats panel
   setStatus('','Grid cleared · Ready');
 });
+
+// Generate Maze button — fills grid using recursive backtracker algorithm
 document.getElementById('mazeBtn').addEventListener('click',()=>{
-  if(running)return;
+  if(running)return; // don't generate while animation is playing
   genMaze(); setStatus('','Maze generated · Press Run to solve');
 });
+
+// Window resize — recalculate cell pixel size so grid always fits the screen
 window.addEventListener('resize',()=>{if(!running){resizeCanvas();redraw();}});
 
-// ── Status & Stats ────────────────────────────────────────────────────
+// ── Status & Stats 
+
+// setStatus — updates the coloured dot and message in the status bar at the bottom of the panel
+// cls = "" (idle, grey dot) | "running" (purple pulsing dot) | "done" (green) | "fail" (red)
+// txt = the message shown next to the dot e.g. "Running BFS…" or "✓ Path found!"
 function setStatus(cls,txt){
-  document.getElementById('statusDot').className='status-dot'+(cls?' '+cls:'');
-  document.getElementById('statusText').textContent=txt;
+  document.getElementById('statusDot').className='status-dot'+(cls?' '+cls:''); // set dot colour via CSS class
+  document.getElementById('statusText').textContent=txt;                         // set message text
 }
+
+// clearStats — resets all four stat counters back to "—" (called before each new run)
+// Also resets the stats object so old values don't carry over to the new run
 function clearStats(){
-  stats={visited:0,pathLen:0,timeMs:0,maxQueue:0};
-  ['statVisited','statPath','statTime','statQueue'].forEach(id=>document.getElementById(id).textContent='—');
+  stats={visited:0,pathLen:0,timeMs:0,maxQueue:0}; // reset internal counters
+  ['statVisited','statPath','statTime','statQueue'].forEach(id=>document.getElementById(id).textContent='—'); // reset all 4 cards in the UI
 }
+
+// showStats — writes the final results into the 4 stat cards after the algorithm finishes
+// pathLen shows ✗ if no path was found (pathLen is 0 which is falsy)
 function showStats(){
-  document.getElementById('statVisited').textContent=stats.visited;
-  document.getElementById('statPath').textContent   =stats.pathLen||'✗';
-  document.getElementById('statTime').textContent   =stats.timeMs;
-  document.getElementById('statQueue').textContent  =stats.maxQueue;
+  document.getElementById('statVisited').textContent=stats.visited;       // how many cells were explored
+  document.getElementById('statPath').textContent   =stats.pathLen||'✗'; // path length, or ✗ if no path
+  document.getElementById('statTime').textContent   =stats.timeMs;        // milliseconds the algorithm took
+  document.getElementById('statQueue').textContent  =stats.maxQueue;      // largest the queue/stack ever got
 }
+
+// stopAnim — cancels the running animation and marks the algorithm as stopped
+// cancelAnimationFrame stops the requestAnimationFrame loop mid-animation
 function stopAnim(){running=false;if(animId)cancelAnimationFrame(animId);}
 
 // ── Maze Generation (iterative DFS / recursive backtracker) ──────────
+// Generates a PERFECT MAZE — every cell connected by exactly one path, no loops.
+// Uses iterative DFS: carve passages by jumping 2 cells at a time (rooms on odd coords).
 function genMaze() {
-  for (let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) grid[r][c]=WALL;
-  const vis = Array.from({length:ROWS},()=>Array(COLS).fill(false));
-  const stack = [{r:1,c:1}];
-  vis[1][1]=true; grid[1][1]=EMPTY;
-  const D2 = [[-2,0],[2,0],[0,-2],[0,2]];
+  for (let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) grid[r][c]=WALL; // fill entire grid with walls first
+
+  const vis = Array.from({length:ROWS},()=>Array(COLS).fill(false)); // tracks which ROOMS have been visited
+  const stack = [{r:1,c:1}];  // start carving from top-left room at (1,1)
+  vis[1][1]=true; grid[1][1]=EMPTY; // mark start room visited and carve it open
+
+  const D2 = [[-2,0],[2,0],[0,-2],[0,2]]; // jump 2 cells in each direction to reach the next ROOM (skipping the wall between)
+
   while (stack.length) {
-    const top = stack[stack.length-1];
+    const top = stack[stack.length-1]; // peek at current room (don't pop yet backtrack later if stuck)
+
     const nbrs = [];
     for (const [dr,dc] of D2) {
-      const nr=top.r+dr, nc=top.c+dc;
-      if (nr>0&&nr<ROWS-1&&nc>0&&nc<COLS-1&&!vis[nr][nc])
-        nbrs.push({nr,nc,mr:top.r+dr/2,mc:top.c+dc/2});
+      const nr=top.r+dr, nc=top.c+dc; // candidate room 2 steps away
+      if (nr>0&&nr<ROWS-1&&nc>0&&nc<COLS-1&&!vis[nr][nc]) // must be inside border and not yet visited
+        nbrs.push({nr,nc,mr:top.r+dr/2,mc:top.c+dc/2}); // mr,mc = the wall cell between current and candidate
     }
-    if (!nbrs.length) { stack.pop(); continue; }
-    const {nr,nc,mr,mc} = nbrs[Math.floor(Math.random()*nbrs.length)];
-    vis[nr][nc]=true; grid[mr][mc]=EMPTY; grid[nr][nc]=EMPTY;
-    stack.push({r:nr,c:nc});
+
+    if (!nbrs.length) { stack.pop(); continue; } // no unvisited neighbours → dead end, backtrack
+
+    const {nr,nc,mr,mc} = nbrs[Math.floor(Math.random()*nbrs.length)]; // pick a random unvisited neighbour
+    vis[nr][nc]=true;          // mark the chosen room as visited
+    grid[mr][mc]=EMPTY;        // carve through the WALL between current room and chosen room
+    grid[nr][nc]=EMPTY;        // carve the chosen room itself open
+    stack.push({r:nr,c:nc});   // move into the chosen room and continue from there
   }
-  startPos={r:1,c:1};
-  endPos  ={r:lastOdd(ROWS),c:lastOdd(COLS)};
-  grid[startPos.r][startPos.c]=EMPTY;
-  grid[endPos.r]  [endPos.c]  =EMPTY;
+
+  startPos={r:1,c:1};                           // reset start to top-left room
+  endPos  ={r:lastOdd(ROWS),c:lastOdd(COLS)};   // reset end to bottom-right room (always odd coords)
+  grid[startPos.r][startPos.c]=EMPTY;            // make sure start is open
+  grid[endPos.r]  [endPos.c]  =EMPTY;            // make sure end is open
   redraw();
 }
 
-// ── Pathfinding ───────────────────────────────────────────────────────
+// Pathfinding 
 const K = (r,c) => `${r},${c}`;
 
 function adj(r, c) {
